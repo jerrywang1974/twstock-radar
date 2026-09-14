@@ -1,0 +1,24 @@
+# Lightweight local test without Postgres:
+#   docker compose -f docker-compose.sqlite.yml up -d --build
+#   curl http://localhost:8000/health
+#   docker compose -f docker-compose.sqlite.yml exec api twstock-radar run --date 2026-09-11 --no-notify
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: twstock-radar/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: sqlite:////data/radar.db
+      TIMEZONE: Asia/Taipei
+    ports:
+      - "8000:8000"
+    volumes:
+      - radar_sqlite:/data
+    command: ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+volumes:
+  radar_sqlite:
