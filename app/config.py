@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     trust_min_net_lots: float = 200.0
     alert_cooldown_days: int = 3
 
+    # Quality filters
+    exclude_non_equity: bool = True
+    # Comma-separated stock codes always excluded from scans/digests
+    exclude_codes: str = ""
+
+    # Backfill pacing (seconds between market-day fetches)
+    backfill_sleep_seconds: float = 1.5
+
 
 @lru_cache
 def get_settings() -> Settings:

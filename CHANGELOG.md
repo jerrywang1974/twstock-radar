@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — 2026-09-14
+
+### Added
+- Historical backfill: `twstock-radar backfill --from/--to` and `POST /jobs/backfill`.
+- Equity filter: exclude ETF / warrants / ETN by default (`EXCLUDE_NON_EQUITY`).
+- Extra exclude list via `EXCLUDE_CODES`.
+- Alert cooldown for repeated code+rule hits (`ALERT_COOLDOWN_DAYS`).
+
+### Changed
+- Scan / institutional top rankings now apply equity filters.
+- Digest copy notes that filters and cooldown are applied.
+
 ## 0.1.0 — 2026-09-14
 
 ### Added

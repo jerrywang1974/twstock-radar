@@ -12,6 +12,8 @@ from app.config import get_settings
 from app.db import get_db, init_db
 from app.models import Alert, IngestJob, InstitutionalDaily, RuleHit
 from app.notify.dispatcher import send_digest
+from app.services.backfill import backfill_range
+from app.services.filters import apply_exclude_codes, filter_equities, parse_extra_excludes
 from app.services.pipeline import run_daily_pipeline
 
 
@@ -88,6 +90,11 @@ def create_app() -> FastAPI:
                 "trust_min_net_lots": settings.trust_min_net_lots,
                 "alert_cooldown_days": settings.alert_cooldown_days,
             },
+            "filters": {
+                "exclude_non_equity": settings.exclude_non_equity,
+                "exclude_codes": settings.exclude_codes,
+                "backfill_sleep_seconds": settings.backfill_sleep_seconds,
+            },
             "channels": {
                 "telegram": bool(settings.telegram_bot_token and settings.telegram_chat_id),
                 "email": bool(settings.smtp_host and settings.smtp_to and settings.smtp_from),
@@ -145,6 +152,29 @@ def create_app() -> FastAPI:
         _: None = Depends(require_token),
     ) -> dict:
         return run_daily_pipeline(db, trade_date=trade_date, notify=notify)
+
+    @app.post("/jobs/backfill")
+    def jobs_backfill(
+        date_from: str = Query(..., alias="from"),
+        date_to: Optional[str] = Query(default=None, alias="to"),
+        notify: bool = Query(default=False),
+        ingest_only: bool = Query(default=False),
+        sleep: Optional[float] = Query(default=None),
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        result = backfill_range(
+            db,
+            start=date_from,
+            end=date_to,
+            notify=notify,
+            run_rules=not ingest_only,
+            sleep_seconds=sleep,
+        )
+        # Avoid huge payloads by default.
+        summary = {k: v for k, v in result.items() if k != "results"}
+        summary["sample"] = result["results"][:5]
+        return summary
 
     @app.get("/jobs/latest")
     def jobs_latest(db: Session = Depends(get_db), _: None = Depends(require_token)) -> dict:
@@ -219,14 +249,17 @@ def create_app() -> FastAPI:
         if field not in allowed:
             raise HTTPException(status_code=400, detail=f"field must be one of {sorted(allowed)}")
         column = getattr(InstitutionalDaily, field)
-        rows = list(
+        raw_rows = list(
             db.scalars(
                 select(InstitutionalDaily)
                 .where(InstitutionalDaily.trade_date == day)
                 .order_by(desc(column))
-                .limit(limit)
             )
         )
+        rows = apply_exclude_codes(
+            filter_equities(raw_rows),
+            parse_extra_excludes(settings.exclude_codes),
+        )[:limit]
         return {
             "trade_date": day.isoformat(),
             "field": field,

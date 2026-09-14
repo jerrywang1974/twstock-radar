@@ -68,6 +68,15 @@ export default function SettingsPage() {
               {settings.channels.email ? '✓' : '✗'} / Slack{' '}
               {settings.channels.slack ? '✓' : '✗'}
             </div>
+            {settings.filters && (
+              <>
+                <div>
+                  排除非股票：{settings.filters.exclude_non_equity ? '是' : '否'}
+                </div>
+                <div>額外排除代碼：{settings.filters.exclude_codes || '(無)'}</div>
+                <div>回填間隔秒數：{settings.filters.backfill_sleep_seconds}</div>
+              </>
+            )}
           </div>
         )}
       </div>
