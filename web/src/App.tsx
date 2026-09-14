@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
+import AiPage from './pages/AiPage'
 import AlertsPage from './pages/AlertsPage'
 import ChannelsPage from './pages/ChannelsPage'
 import DashboardPage from './pages/DashboardPage'
@@ -10,6 +11,7 @@ import SettingsPage from './pages/SettingsPage'
 const links = [
   { to: '/', label: '總覽', end: true },
   { to: '/scan', label: '掃市' },
+  { to: '/ai', label: 'AI 觀察' },
   { to: '/rules', label: '規則' },
   { to: '/jobs', label: '任務' },
   { to: '/alerts', label: '通知紀錄' },
@@ -45,6 +47,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/scan" element={<ScanPage />} />
+          <Route path="/ai" element={<AiPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/alerts" element={<AlertsPage />} />

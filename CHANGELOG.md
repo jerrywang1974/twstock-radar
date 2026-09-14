@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — 2026-09-14
+
+### Added
+- Phase 4 AI observations via SpaceXAI/xAI (`XAI_API_KEY`, `AI_ENABLED`).
+- Quant price observation bands from recent OHLCV (`watch_low` / `watch_high`).
+- `GET /ai/insights` and Admin UI page「AI 觀察」.
+- Docker edge profile now builds Vite UI into nginx (`deploy/Dockerfile.web`), proxying `/api` to backend.
+
+### Notes
+- AI text is interpretive only; bands are derived from market data, not model-invented targets.
+- Disclaimer remains in digests and UI.
+
 ## 0.2.0 — 2026-09-14
 
 ### Added

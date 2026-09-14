@@ -62,9 +62,11 @@ services:
         condition: service_healthy
     command: ["python", "-m", "app.worker"]
 
-  nginx:
+  web:
     profiles: ["edge"]
-    image: nginx:1.27-alpine
+    build:
+      context: ..
+      dockerfile: twstock-radar/deploy/Dockerfile.web
     depends_on:
       api:
         condition: service_healthy
@@ -72,7 +74,6 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/certbot/www:/var/www/certbot:ro
       - ./deploy/certbot/conf:/etc/letsencrypt:ro
 

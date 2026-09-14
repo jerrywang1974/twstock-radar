@@ -29,6 +29,7 @@ twstock-radar backfill --from 2026-09-01 --to 2026-09-11 --ingest-only
 | GET | `/scans/today` | 規則命中 |
 | GET | `/institutional/top` | 法人排行 |
 | GET | `/alerts` | 通知紀錄 |
+| GET | `/ai/insights` | AI 觀察（規則命中解讀／價帶） |
 | GET | `/settings` | 規則／通道狀態 |
 | POST | `/channels/test` | 測試通知通道 |
 
@@ -51,6 +52,17 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
 - 預設排除非「股票／創新板」（ETF、權證、ETN…）
 - `EXCLUDE_CODES=2330,2317` 可再排除指定代碼
 - `ALERT_COOLDOWN_DAYS`：同一代碼＋同一規則在冷卻天數內不重複進入通知命中
+
+## AI 觀察（Phase 4）
+
+1. 在 `.env` 設定：
+   - `AI_ENABLED=true`
+   - `XAI_API_KEY=...`（[console.x.ai](https://console.x.ai)）
+   - 可選 `AI_MODEL=grok-4.5`、`AI_MAX_HITS=10`
+2. 執行 `twstock-radar run --date YYYY-MM-DD`（或 UI 任務頁）
+3. 到「AI 觀察」頁或 `GET /ai/insights` 查看
+
+AI 只解讀「已命中規則」的檔；觀察價帶由近十日行情計算，不是模型空想目標價。內容僅供觀察，非投資建議。
 
 ## 資料語意
 
