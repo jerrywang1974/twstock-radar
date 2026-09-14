@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -e /opt/twstock \
         "apscheduler>=3.10.0" \
         "httpx>=0.27.0" \
         "python-dotenv>=1.0.0" \
+        "openai>=1.40.0" \
     && pip install --no-cache-dir --no-deps -e /app
 
 ENV PYTHONUNBUFFERED=1 \

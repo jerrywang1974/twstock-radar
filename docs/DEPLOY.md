@@ -7,8 +7,8 @@
 | `api` | FastAPI（掃市結果、任務、通知測試） |
 | `worker` | 盤後排程（預設 18:30 / 19:30 / 20:30 Asia/Taipei） |
 | `db` | Postgres 16（完整堆疊） |
-| `nginx` | 可選（compose profile `edge`）+ Let’s Encrypt 目錄預留 |
-| `web/` | Vite + React 管理後台（開發用 `npm run dev`；尚未打進正式 image） |
+| `web` | 可選（compose profile `edge`）：Vite 靜態檔 + nginx，`/api` 反代到 API |
+| 本機 `web/` | 開發用 `npm run dev`（proxy 到 :8000） |
 
 相依函式庫：本機旁的 [`twstock`](https://github.com/jerrywang1974/twstock)（需含 `twstock.institutional`）。
 
@@ -57,10 +57,18 @@ curl -X POST 'http://localhost:8000/jobs/run?trade_date=2026-09-11&notify=false'
    - `SMTP_*`（Email）
    - `SLACK_WEBHOOK_URL`
 4. `docker compose up -d --build`
-5. （可選）`docker compose --profile edge up -d` 啟用 nginx  
-6. 網域 A 記錄指向 VPS 後，用 certbot webroot 簽憑證到 `deploy/certbot/conf`，再補 443 server block
+5. （可選）啟用前端 + nginx：
+   ```bash
+   docker compose --profile edge up -d --build
+   # http://localhost        -> Admin UI
+   # http://localhost/api/*  -> FastAPI
+   ```
+6. 若要用 AI：在 `.env` 設 `AI_ENABLED=true` 與 `XAI_API_KEY`
+7. 網域 A 記錄指向 VPS 後，用 certbot webroot 簽憑證到 `deploy/certbot/conf`，再補 443 server block
 
 ## 管理後台
+
+開發：
 
 ```bash
 cd web
@@ -69,7 +77,7 @@ npm run dev
 # http://localhost:5173  （/api 代理到 :8000）
 ```
 
-正式環境可暫時用 API／CLI；靜態前端打進 nginx image 列為後續工作。
+正式（Docker edge profile）會把前端建進 nginx image。
 
 ## 驗收清單
 

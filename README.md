@@ -9,6 +9,18 @@
 - [使用說明](docs/USAGE.md)
 - [部署指南（Docker / VPS）](docs/DEPLOY.md)
 - [管理後台](web/README.md)
+- [Changelog](CHANGELOG.md)
+
+## 快速開關 AI
+
+```bash
+# .env
+AI_ENABLED=true
+XAI_API_KEY=xai-...
+AI_MODEL=grok-4.5
+```
+
+然後跑掃市；結果見 UI「AI 觀察」或 `GET /ai/insights`。
 
 ## 功能（Phase 1）
 

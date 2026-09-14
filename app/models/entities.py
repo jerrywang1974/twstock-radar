@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -86,6 +86,29 @@ class Alert(Base):
     body: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="pending")
     error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime, default=lambda: dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    )
+
+
+class AiInsight(Base):
+    __tablename__ = "ai_insights"
+    __table_args__ = (
+        UniqueConstraint("trade_date", "code", "rule_id", name="uq_ai_day_code_rule"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    trade_date: Mapped[dt.date] = mapped_column(Date, index=True)
+    code: Mapped[str] = mapped_column(String(16), index=True)
+    name: Mapped[str] = mapped_column(String(64), default="")
+    rule_id: Mapped[str] = mapped_column(String(64), default="")
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    action_bias: Mapped[str] = mapped_column(String(32), default="watch")
+    watch_low: Mapped[float | None] = mapped_column(Float, nullable=True)
+    watch_high: Mapped[float | None] = mapped_column(Float, nullable=True)
+    last_close: Mapped[float | None] = mapped_column(Float, nullable=True)
+    model: Mapped[str] = mapped_column(String(64), default="")
+    raw_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime, default=lambda: dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     )

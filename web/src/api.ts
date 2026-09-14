@@ -117,6 +117,23 @@ export const api = {
     ),
   testChannels: () =>
     request<{ alerts: AlertRow[] }>('/channels/test', { method: 'POST' }),
+  aiInsights: (tradeDate?: string) =>
+    request<{
+      trade_date: string
+      enabled: boolean
+      configured: boolean
+      insights: Array<{
+        code: string
+        name: string
+        rule_id: string
+        rationale: string
+        action_bias: string
+        watch_low: number | null
+        watch_high: number | null
+        last_close: number | null
+        model: string
+      }>
+    }>(`/ai/insights${tradeDate ? `?trade_date=${tradeDate}` : ''}`),
 }
 
 export function lots(shares: number): string {

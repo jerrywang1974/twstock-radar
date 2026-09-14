@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import get_db, init_db
-from app.models import Alert, IngestJob, InstitutionalDaily, RuleHit
+from app.models import AiInsight, Alert, IngestJob, InstitutionalDaily, RuleHit
 from app.notify.dispatcher import send_digest
 from app.services.backfill import backfill_range
 from app.services.filters import apply_exclude_codes, filter_equities, parse_extra_excludes
@@ -94,6 +94,12 @@ def create_app() -> FastAPI:
                 "exclude_non_equity": settings.exclude_non_equity,
                 "exclude_codes": settings.exclude_codes,
                 "backfill_sleep_seconds": settings.backfill_sleep_seconds,
+            },
+            "ai": {
+                "enabled": settings.ai_enabled,
+                "configured": bool(settings.xai_api_key),
+                "model": settings.ai_model,
+                "max_hits": settings.ai_max_hits,
             },
             "channels": {
                 "telegram": bool(settings.telegram_bot_token and settings.telegram_chat_id),
@@ -296,6 +302,46 @@ def create_app() -> FastAPI:
                 }
                 for a in rows
             ]
+        }
+
+    @app.get("/ai/insights")
+    def ai_insights(
+        trade_date: Optional[str] = Query(default=None),
+        limit: int = Query(default=50, ge=1, le=200),
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        day = (
+            dt.datetime.strptime(trade_date, "%Y-%m-%d").date()
+            if trade_date
+            else dt.date.today()
+        )
+        rows = list(
+            db.scalars(
+                select(AiInsight)
+                .where(AiInsight.trade_date == day)
+                .order_by(desc(AiInsight.id))
+                .limit(limit)
+            )
+        )
+        return {
+            "trade_date": day.isoformat(),
+            "enabled": settings.ai_enabled,
+            "configured": bool(settings.xai_api_key),
+            "insights": [
+                {
+                    "code": r.code,
+                    "name": r.name,
+                    "rule_id": r.rule_id,
+                    "rationale": r.rationale,
+                    "action_bias": r.action_bias,
+                    "watch_low": r.watch_low,
+                    "watch_high": r.watch_high,
+                    "last_close": r.last_close,
+                    "model": r.model,
+                }
+                for r in rows
+            ],
         }
 
     return app

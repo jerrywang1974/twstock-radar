@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.notify import send_digest
 from app.rules.engine import format_digest, persist_hits, scan_trust_rules
+from app.services.ai_analysis import analyze_hits, format_ai_section, insights_as_dict
 from app.services.ingest import ingest_date
 
 
@@ -22,12 +23,15 @@ def run_daily_pipeline(
     day = job.trade_date
     hits = []
     alerts = []
+    insights = []
 
     if job.status in {"success", "empty"}:
         hits = scan_trust_rules(db, day)
         if hits:
             persist_hits(db, hits)
+            insights = analyze_hits(db, hits)
         subject, body = format_digest(hits, day)
+        body = body + format_ai_section(insights)
         if notify:
             alerts = send_digest(db, day, subject, body)
     else:
@@ -46,6 +50,7 @@ def run_daily_pipeline(
             "message": job.message,
         },
         "hits": len(hits),
+        "ai_insights": insights_as_dict(insights),
         "alerts": [
             {"id": a.id, "channel": a.channel, "status": a.status, "error": a.error}
             for a in alerts

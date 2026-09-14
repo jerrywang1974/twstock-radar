@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # Backfill pacing (seconds between market-day fetches)
     backfill_sleep_seconds: float = 1.5
 
+    # AI (SpaceXAI / xAI)
+    ai_enabled: bool = False
+    xai_api_key: Optional[str] = None
+    ai_model: str = "grok-4.5"
+    ai_max_hits: int = 10
+    ai_base_url: str = "https://api.x.ai/v1"
+
 
 @lru_cache
 def get_settings() -> Settings:
