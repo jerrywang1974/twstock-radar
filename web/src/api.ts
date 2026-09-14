@@ -73,6 +73,11 @@ export type Settings = {
     trust_min_net_lots: number
     alert_cooldown_days: number
   }
+  filters?: {
+    exclude_non_equity: boolean
+    exclude_codes: string
+    backfill_sleep_seconds: number
+  }
   channels: {
     telegram: boolean
     email: boolean

@@ -11,6 +11,10 @@ twstock-radar run --date 2026-09-11 --no-notify
 
 # 掃市並依 .env 發送 Telegram / Email / Slack
 twstock-radar run --date 2026-09-11
+
+# 歷史回填（預設不通知；可加 --ingest-only 只抓資料）
+twstock-radar backfill --from 2026-09-01 --to 2026-09-11 --sleep 1.5
+twstock-radar backfill --from 2026-09-01 --to 2026-09-11 --ingest-only
 ```
 
 ## API
@@ -20,6 +24,7 @@ twstock-radar run --date 2026-09-11
 | GET | `/health` | 健康檢查 |
 | GET | `/dashboard` | 今日總覽 |
 | POST | `/jobs/run` | 手動 ingest + 規則 + 通知 |
+| POST | `/jobs/backfill?from=&to=` | 日期區間回填 |
 | GET | `/jobs/latest` | 最近任務 |
 | GET | `/scans/today` | 規則命中 |
 | GET | `/institutional/top` | 法人排行 |
@@ -40,6 +45,12 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
 3. **foreign_trust_align**：外資與投信同向買超  
 
 門檻見 `.env.example`。
+
+## 過濾與冷卻（Phase 3）
+
+- 預設排除非「股票／創新板」（ETF、權證、ETN…）
+- `EXCLUDE_CODES=2330,2317` 可再排除指定代碼
+- `ALERT_COOLDOWN_DAYS`：同一代碼＋同一規則在冷卻天數內不重複進入通知命中
 
 ## 資料語意
 
