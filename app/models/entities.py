@@ -91,6 +91,28 @@ class Alert(Base):
     )
 
 
+class RuleIdea(Base):
+    """AI-suggested screening rule kept as operator reference (not auto-run)."""
+
+    __tablename__ = "rule_ideas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    trade_date: Mapped[dt.date] = mapped_column(Date, index=True)
+    idea_id: Mapped[str] = mapped_column(String(64), index=True, default="")
+    title: Mapped[str] = mapped_column(String(128), default="")
+    logic: Mapped[str] = mapped_column(Text, default="")
+    why: Mapped[str] = mapped_column(Text, default="")
+    data_needed: Mapped[str] = mapped_column(Text, default="")
+    risk_notes: Mapped[str] = mapped_column(Text, default="")
+    priority: Mapped[str] = mapped_column(String(16), default="medium")
+    example_codes: Mapped[str] = mapped_column(String(256), default="")
+    model: Mapped[str] = mapped_column(String(64), default="")
+    raw_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[dt.datetime] = mapped_column(
+        DateTime, default=lambda: dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    )
+
+
 class AiInsight(Base):
     """Persisted AI card for one (trade_date, code, rule_id).
 

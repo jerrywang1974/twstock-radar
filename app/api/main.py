@@ -16,6 +16,7 @@ from app.services.ai_analysis import analyze_trade_date, insights_as_dict
 from app.services.backfill import backfill_range
 from app.services.filters import apply_exclude_codes, filter_equities, parse_extra_excludes
 from app.services.pipeline import run_daily_pipeline
+from app.services.rule_ideas import generate_rule_ideas, ideas_as_dict, list_rule_ideas
 
 
 def create_app() -> FastAPI:
@@ -354,6 +355,46 @@ def create_app() -> FastAPI:
             "trade_date": day.isoformat(),
             "count": len(insights),
             "insights": insights_as_dict(insights),
+        }
+
+    @app.get("/rules/ideas")
+    def rules_ideas(
+        trade_date: Optional[str] = Query(default=None),
+        limit: int = Query(default=50, ge=1, le=200),
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        day = (
+            dt.datetime.strptime(trade_date, "%Y-%m-%d").date()
+            if trade_date
+            else None
+        )
+        rows = list_rule_ideas(db, trade_date=day, limit=limit)
+        return {
+            "trade_date": day.isoformat() if day else None,
+            "count": len(rows),
+            "ideas": ideas_as_dict(rows),
+            "note": "AI 規則構想僅供參考，不會自動加入掃市引擎。",
+        }
+
+    @app.post("/rules/ideas/generate")
+    def rules_ideas_generate(
+        trade_date: Optional[str] = Query(default=None),
+        use_ai: bool = Query(default=True),
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        day = (
+            dt.datetime.strptime(trade_date, "%Y-%m-%d").date()
+            if trade_date
+            else dt.date.today()
+        )
+        rows = generate_rule_ideas(db, day, settings=settings, use_ai=use_ai)
+        return {
+            "trade_date": day.isoformat(),
+            "count": len(rows),
+            "ideas": ideas_as_dict(rows),
+            "note": "僅供參考；要正式上線需另實作規則程式。",
         }
 
     return app

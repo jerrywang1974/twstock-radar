@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db import Base
+import app.models  # noqa: F401 — register all tables on Base.metadata
 
 
 def make_test_session():
