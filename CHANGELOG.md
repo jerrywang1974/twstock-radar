@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-09-15
+
+### Changed
+- Default `AI_MAX_HITS` raised to 15; ranking prefers better upside/downside ratio.
+- AI prompt is risk-first and growth-aware (`risk_level`, `growth_score`, avoid/growth thesis).
+- Quant overlays: near range-high or poor reward/risk can downgrade `buy_bias`.
+- Admin AI table shows risk, growth score, and upside/downside %.
+
 ## 0.3.0 — 2026-09-14
 
 ### Added

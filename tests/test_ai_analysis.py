@@ -45,7 +45,18 @@ class AiAnalysisTest(unittest.TestCase):
             },
             ensure_ascii=False,
         )
-        price_band.return_value = PriceBand(900.0, 890.0, 860.0, 920.0, "mock")
+        price_band.return_value = PriceBand(
+            last_close=900.0,
+            ma5=890.0,
+            ma20=880.0,
+            watch_low=860.0,
+            watch_high=920.0,
+            upside_pct=2.22,
+            downside_pct=4.44,
+            ma5_bias_pct=1.12,
+            range_position=0.67,
+            source="mock",
+        )
         settings = Settings(
             ai_enabled=True,
             xai_api_key="test-key",

@@ -58,7 +58,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
 1. 在 `.env` 設定：
    - `AI_ENABLED=true`
    - `XAI_API_KEY=...`（[console.x.ai](https://console.x.ai)）
-   - 可選 `AI_MODEL=grok-4.5`、`AI_MAX_HITS=5`
+   - 可選 `AI_MODEL=grok-4.5`、`AI_MAX_HITS=15`、`AI_PREFER_UPSIDE=true`
 2. 先有規則命中資料（`twstock-radar run --date YYYY-MM-DD --no-notify`）
 3. 單獨跑 AI（不必重抓行情）：
    ```bash
@@ -69,7 +69,12 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
    ```
 4. UI「AI 觀察」頁可查詢／一鍵執行分析；`GET /ai/insights` 讀取結果
 
-AI 只解讀「已命中規則」的檔（每檔優先保留一則）；觀察價帶由近十日行情計算，不是模型空想目標價。內容僅供觀察，非投資建議。
+AI 只解讀「已命中規則」的檔（每檔一則，可到 15+）。會輸出：
+- `risk_level` / `avoid_reason`（風險迴避）
+- `growth_score` / `growth_thesis`（成長理由）
+- `upside_pct` / `downside_pct`（上檔／下檔空間%）
+
+若上檔空間明顯小於下檔風險、或已近區間高點，系統會偏保守（降為 watch／標高風險）。內容僅供觀察，非投資建議。
 
 ## 資料語意
 

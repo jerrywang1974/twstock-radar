@@ -47,8 +47,10 @@ class Settings(BaseSettings):
     ai_enabled: bool = False
     xai_api_key: Optional[str] = None
     ai_model: str = "grok-4.5"
-    ai_max_hits: int = 10
+    ai_max_hits: int = 15
     ai_base_url: str = "https://api.x.ai/v1"
+    # Prefer names with meaningful upside vs downside when ranking for AI.
+    ai_prefer_upside: bool = True
 
 
 @lru_cache
