@@ -17,8 +17,10 @@ from app.services.price_bands import PriceBand, compute_price_band
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
-    "你是台股籌碼觀察助手。只根據提供的數字撰寫繁中說明。"
-    "不可捏造未提供的財報、消息或價格。"
+    "你是偏積極、但風險優先的台股籌碼／成長觀察助手。"
+    "目標：找出值得追蹤的成長機會，同時明確標出應迴避的風險。"
+    "只根據提供的數字撰寫繁中說明；不可捏造未提供的財報、消息或價格。"
+    "若風險偏高，必須把 action_bias 設為 sell_bias 或 watch，並填 avoid_reason。"
     "回覆必須是單一 JSON 物件，不要 markdown。"
 )
 
@@ -45,7 +47,6 @@ def _call_xai(prompt: str, settings: Settings) -> str:
 
     client = OpenAI(api_key=settings.xai_api_key, base_url=settings.ai_base_url)
 
-    # Prefer Responses API.
     try:
         response = client.responses.create(
             model=settings.ai_model,
@@ -65,43 +66,58 @@ def _call_xai(prompt: str, settings: Settings) -> str:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.2,
+        temperature=0.25,
     )
-    content = completion.choices[0].message.content or "{}"
-    return content
+    return completion.choices[0].message.content or "{}"
 
 
 def _build_prompt(hit: Hit, band: PriceBand) -> str:
     metrics = hit.metrics or {}
+    band_data = band.as_prompt_dict()
     return f"""
-請根據以下「已發生的規則命中」撰寫觀察說明（非投資建議）。
+請根據以下「已發生的規則命中」做積極成長＋風險迴避評估（非投資建議）。
 
 股票: {hit.code} {hit.name}
 交易日: {hit.trade_date.isoformat()}
 規則: {hit.rule_id}
 規則原因: {hit.reason}
 規則標籤: {hit.suggested_action}
-指標: {json.dumps(metrics, ensure_ascii=False)}
-價格帶(由近十日行情計算，非目標價):
-  last_close={band.last_close}, ma5={band.ma5},
-  watch_low={band.watch_low}, watch_high={band.watch_high}, source={band.source}
+籌碼指標: {json.dumps(metrics, ensure_ascii=False)}
+價格／空間指標(由近十日行情計算，非目標價):
+{json.dumps(band_data, ensure_ascii=False)}
 
-請只輸出 JSON，欄位如下:
+評估原則（務必遵守）:
+1. 風險優先：若 downside_pct 明顯大於 upside_pct、或 range_position 接近 1（已近區間高點）、
+   或收盤遠高於均線且籌碼僅單日暴衝，傾向降級為 watch / sell_bias，並寫清 avoid_reason。
+2. 成長空間：用 upside_pct、ma5_bias_pct、投信／外資同向與連買，評估成長分數 growth_score(1-10)。
+3. 報酬風險比：若 upside_pct / max(downside_pct,0.1) < 1，通常不宜 buy_bias。
+4. 不可捏造營收、本益比、產業新聞；沒有的資料就不要寫。
+
+請只輸出 JSON:
 {{
-  "rationale": "2-4 句繁中說明，聚焦籌碼與價量關係",
+  "rationale": "3-5 句繁中，含籌碼、價位區間位置、成長與風險取捨",
   "action_bias": "watch|buy_bias|sell_bias",
+  "risk_level": "low|medium|high|avoid",
+  "growth_score": 1,
+  "growth_thesis": "一句成長理由（若無則空字串）",
+  "avoid_reason": "一句應迴避／減碼理由（若無則空字串）",
   "risks": "主要風險一句"
 }}
 """.strip()
 
 
 def _priority(hit: Hit) -> int:
-    order = {"trust_streak": 0, "trust_top_buy": 1, "foreign_trust_align": 2}
+    order = {"trust_streak": 0, "foreign_trust_align": 1, "trust_top_buy": 2}
     return order.get(hit.rule_id, 9)
 
 
-def select_hits_for_ai(hits: List[Hit], limit: int) -> List[Hit]:
-    """Prefer one insight per code, ranked by rule priority then metrics."""
+def select_hits_for_ai(
+    hits: List[Hit], limit: int, prefer_upside: bool = True
+) -> List[Hit]:
+    """One insight per code; optionally enrich-sort later after bands.
+
+    First pass keeps rule priority; caller may re-rank with bands.
+    """
     ranked = sorted(
         hits,
         key=lambda h: (
@@ -114,14 +130,36 @@ def select_hits_for_ai(hits: List[Hit], limit: int) -> List[Hit]:
     )
     chosen: List[Hit] = []
     seen: set[str] = set()
+    # Take a wider candidate pool if we will re-rank by upside.
+    pool_limit = max(limit * 3, limit) if prefer_upside else limit
     for hit in ranked:
         if hit.code in seen:
             continue
         seen.add(hit.code)
         chosen.append(hit)
-        if len(chosen) >= limit:
+        if len(chosen) >= pool_limit:
             break
     return chosen
+
+
+def _rank_with_bands(
+    pairs: List[tuple[Hit, PriceBand]], limit: int, prefer_upside: bool
+) -> List[tuple[Hit, PriceBand]]:
+    def score(item: tuple[Hit, PriceBand]) -> tuple:
+        hit, band = item
+        upside = band.upside_pct if band.upside_pct is not None else -999
+        downside = band.downside_pct if band.downside_pct is not None else 999
+        ratio = upside / downside if downside and downside > 0 else upside
+        # Prefer not already at range top.
+        near_high_penalty = 0
+        if band.range_position is not None and band.range_position >= 0.9:
+            near_high_penalty = 1
+        trust = (hit.metrics or {}).get("trust_net_lots", 0) or 0
+        if prefer_upside:
+            return (near_high_penalty, -ratio, -upside, -float(trust), _priority(hit))
+        return (_priority(hit), -float(trust), -ratio)
+
+    return sorted(pairs, key=score)[:limit]
 
 
 def hits_from_rule_rows(rows: List[RuleHit]) -> List[Hit]:
@@ -145,6 +183,15 @@ def hits_from_rule_rows(rows: List[RuleHit]) -> List[Hit]:
     return out
 
 
+def _safe_float(value, default=None):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def analyze_hits(
     db: Session,
     hits: List[Hit],
@@ -158,24 +205,68 @@ def analyze_hits(
         logger.warning("AI enabled but XAI_API_KEY missing")
         return []
 
-    selected = select_hits_for_ai(hits, max(int(settings.ai_max_hits), 0))
-    saved: List[AiInsight] = []
+    limit = max(int(settings.ai_max_hits), 0)
+    candidates = select_hits_for_ai(hits, limit, prefer_upside=settings.ai_prefer_upside)
+    paired: List[tuple[Hit, PriceBand]] = []
+    for hit in candidates:
+        paired.append((hit, compute_price_band(hit.code)))
+    selected = _rank_with_bands(paired, limit, settings.ai_prefer_upside)
 
-    for hit in selected:
-        band = compute_price_band(hit.code)
+    saved: List[AiInsight] = []
+    for hit, band in selected:
         try:
             raw_text = _call_xai(_build_prompt(hit, band), settings)
             payload = _extract_json(raw_text)
             rationale = str(payload.get("rationale") or "").strip()
             action_bias = str(payload.get("action_bias") or hit.suggested_action).strip()
+            risk_level = str(payload.get("risk_level") or "medium").strip().lower()
+            growth_score = _safe_float(payload.get("growth_score"))
+            growth_thesis = str(payload.get("growth_thesis") or "").strip()
+            avoid_reason = str(payload.get("avoid_reason") or "").strip()
             risks = str(payload.get("risks") or "").strip()
+
+            # Hard risk overlays from quant bands (aggressive avoidance).
+            if band.range_position is not None and band.range_position >= 0.95:
+                risk_level = "high" if risk_level == "low" else risk_level
+                if action_bias == "buy_bias":
+                    action_bias = "watch"
+                if not avoid_reason:
+                    avoid_reason = "價位已接近近十日區間上緣，追高風險偏高"
+            if (
+                band.upside_pct is not None
+                and band.downside_pct is not None
+                and band.downside_pct > 0
+                and (band.upside_pct / band.downside_pct) < 0.8
+                and action_bias == "buy_bias"
+            ):
+                action_bias = "watch"
+                risk_level = "high"
+                if not avoid_reason:
+                    avoid_reason = (
+                        f"上檔空間 {band.upside_pct}% 低於下檔風險 {band.downside_pct}%，報酬風險比不佳"
+                    )
+            if risk_level == "avoid" and action_bias == "buy_bias":
+                action_bias = "sell_bias"
+
+            extra_lines = []
+            if growth_thesis:
+                extra_lines.append(f"成長：{growth_thesis}")
+            if avoid_reason:
+                extra_lines.append(f"迴避：{avoid_reason}")
             if risks:
-                rationale = f"{rationale}\n風險：{risks}".strip()
+                extra_lines.append(f"風險：{risks}")
+            if extra_lines:
+                rationale = (rationale + "\n" + "\n".join(extra_lines)).strip()
+
             status_raw = raw_text
         except Exception as exc:  # noqa: BLE001
             logger.exception("AI analyze failed for %s", hit.code)
             rationale = f"AI 解讀失敗，改以規則摘要：{hit.reason}（{exc}）"
             action_bias = hit.suggested_action
+            risk_level = "medium"
+            growth_score = None
+            growth_thesis = ""
+            avoid_reason = ""
             status_raw = json.dumps({"error": str(exc)}, ensure_ascii=False)
 
         existing = db.scalar(
@@ -192,6 +283,12 @@ def analyze_hits(
             rule_id=hit.rule_id,
             rationale=rationale,
             action_bias=action_bias,
+            risk_level=risk_level,
+            growth_score=growth_score,
+            upside_pct=band.upside_pct,
+            downside_pct=band.downside_pct,
+            avoid_reason=avoid_reason,
+            growth_thesis=growth_thesis,
             watch_low=band.watch_low,
             watch_high=band.watch_high,
             last_close=band.last_close,
@@ -221,7 +318,6 @@ def analyze_trade_date(
     trade_date: dt.date,
     settings: Settings | None = None,
 ) -> List[AiInsight]:
-    """Run AI on persisted rule hits for a trade date (no re-ingest)."""
     rows = list(
         db.scalars(
             select(RuleHit)
@@ -235,14 +331,20 @@ def analyze_trade_date(
 def format_ai_section(insights: List[AiInsight]) -> str:
     if not insights:
         return ""
-    lines = ["", "AI 觀察（非投資建議）:"]
-    for item in insights[:10]:
+    lines = ["", "AI 觀察（風險優先／成長空間，非投資建議）:"]
+    for item in insights[:15]:
         band = ""
         if item.watch_low is not None and item.watch_high is not None:
             band = f" | 觀察區間 {item.watch_low}-{item.watch_high}"
         close = f" | 收 {item.last_close}" if item.last_close is not None else ""
+        growth = f" | 成長分 {item.growth_score}" if item.growth_score is not None else ""
+        risk = f" | 風險 {item.risk_level}"
+        rr = ""
+        if item.upside_pct is not None and item.downside_pct is not None:
+            rr = f" | 上/下 {item.upside_pct}%/{item.downside_pct}%"
         lines.append(
-            f"- {item.code} {item.name} [{item.action_bias}]{close}{band}\n  {item.rationale}"
+            f"- {item.code} {item.name} [{item.action_bias}]{close}{band}{growth}{risk}{rr}\n"
+            f"  {item.rationale}"
         )
     return "\n".join(lines)
 
@@ -255,6 +357,12 @@ def insights_as_dict(insights: List[AiInsight]) -> list[dict]:
             "rule_id": i.rule_id,
             "rationale": i.rationale,
             "action_bias": i.action_bias,
+            "risk_level": i.risk_level,
+            "growth_score": i.growth_score,
+            "upside_pct": i.upside_pct,
+            "downside_pct": i.downside_pct,
+            "avoid_reason": i.avoid_reason,
+            "growth_thesis": i.growth_thesis,
             "watch_low": i.watch_low,
             "watch_high": i.watch_high,
             "last_close": i.last_close,

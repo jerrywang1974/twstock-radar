@@ -147,12 +147,19 @@ export const api = {
       trade_date: string
       enabled: boolean
       configured: boolean
+      max_hits?: number
       insights: Array<{
         code: string
         name: string
         rule_id: string
         rationale: string
         action_bias: string
+        risk_level?: string
+        growth_score?: number | null
+        upside_pct?: number | null
+        downside_pct?: number | null
+        avoid_reason?: string
+        growth_thesis?: string
         watch_low: number | null
         watch_high: number | null
         last_close: number | null
@@ -169,6 +176,12 @@ export const api = {
         rule_id: string
         rationale: string
         action_bias: string
+        risk_level?: string
+        growth_score?: number | null
+        upside_pct?: number | null
+        downside_pct?: number | null
+        avoid_reason?: string
+        growth_thesis?: string
         watch_low: number | null
         watch_high: number | null
         last_close: number | null

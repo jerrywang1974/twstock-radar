@@ -329,20 +329,8 @@ def create_app() -> FastAPI:
             "trade_date": day.isoformat(),
             "enabled": settings.ai_enabled,
             "configured": bool(settings.xai_api_key),
-            "insights": [
-                {
-                    "code": r.code,
-                    "name": r.name,
-                    "rule_id": r.rule_id,
-                    "rationale": r.rationale,
-                    "action_bias": r.action_bias,
-                    "watch_low": r.watch_low,
-                    "watch_high": r.watch_high,
-                    "last_close": r.last_close,
-                    "model": r.model,
-                }
-                for r in rows
-            ],
+            "max_hits": settings.ai_max_hits,
+            "insights": insights_as_dict(rows),
         }
 
     @app.post("/ai/analyze")
