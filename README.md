@@ -7,6 +7,7 @@
 ## 文件
 
 - [使用說明](docs/USAGE.md)
+- [AI 操作指令／參考價註記](docs/AI_NOTES.md)
 - [部署指南（Docker / VPS）](docs/DEPLOY.md)
 - [管理後台](web/README.md)
 - [Changelog](CHANGELOG.md)
