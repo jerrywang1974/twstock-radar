@@ -16,6 +16,10 @@ COPY twstock /opt/twstock
 COPY twstock-radar /app
 
 # Install local twstock first, then radar app without resolving twstock from PyPI.
+# twstock uses uv-dynamic-versioning (needs Git). Build context excludes .git via
+# parent .dockerignore, so bypass VCS version detection for the image build.
+ARG TWSTOCK_VERSION=0.0.0+docker
+ENV UV_DYNAMIC_VERSIONING_BYPASS=${TWSTOCK_VERSION}
 RUN pip install --no-cache-dir -e /opt/twstock \
     && pip install --no-cache-dir \
         "fastapi>=0.115.0" \
