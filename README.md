@@ -48,7 +48,7 @@ twstock-radar init-db
 twstock-radar run --date 2026-09-11 --no-notify
 
 # API
-uvicorn app.api.main:app --reload --port 8000
+uvicorn app.api.main:app --reload --port 18000
 
 # Admin UI (另開一個終端)
 cd web && npm install && npm run dev
@@ -65,7 +65,7 @@ cd web && npm install && npm run dev
 cd twstock-radar
 cp -n .env.example .env
 docker compose -f docker-compose.sqlite.yml up -d --build
-curl http://localhost:8000/health
+curl http://localhost:18000/health
 docker compose -f docker-compose.sqlite.yml exec api \
   twstock-radar run --date 2026-09-11 --no-notify
 ```
@@ -77,15 +77,15 @@ cd twstock-radar
 cp -n .env.example .env
 # 可選：填 TELEGRAM_* / SMTP_* / SLACK_WEBHOOK_URL / API_TOKEN
 docker compose up -d --build
-curl http://localhost:8000/health
-curl -X POST 'http://localhost:8000/jobs/run?trade_date=2026-09-11&notify=false'
+curl http://localhost:18000/health
+curl -X POST 'http://localhost:18000/jobs/run?trade_date=2026-09-11&notify=false'
 ```
 
 ### C. 加上 nginx（VPS / HTTPS 預留）
 
 ```bash
 docker compose --profile edge up -d --build
-# http://localhost  -> nginx -> api:8000
+# http://localhost  -> nginx -> api:18000
 ```
 
 HTTPS（nginx + Let’s Encrypt）建議流程：

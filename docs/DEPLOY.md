@@ -8,7 +8,7 @@
 | `worker` | 盤後排程（預設 18:30 / 19:30 / 20:30 Asia/Taipei） |
 | `db` | Postgres 16（完整堆疊） |
 | `web` | 可選（compose profile `edge`）：Vite 靜態檔 + nginx，`/api` 反代到 API |
-| 本機 `web/` | 開發用 `npm run dev`（proxy 到 :8000） |
+| 本機 `web/` | 開發用 `npm run dev`（proxy 到 :18000） |
 
 相依函式庫：本機旁的 [`twstock`](https://github.com/jerrywang1974/twstock)（需含 `twstock.institutional`）。
 
@@ -32,7 +32,7 @@ parent/
 cd twstock-radar
 cp -n .env.example .env
 docker compose -f docker-compose.sqlite.yml up -d --build
-curl http://localhost:8000/health
+curl http://localhost:18000/health
 docker compose -f docker-compose.sqlite.yml exec api \
   twstock-radar run --date 2026-09-11 --no-notify
 ```
@@ -43,8 +43,8 @@ docker compose -f docker-compose.sqlite.yml exec api \
 cp -n .env.example .env
 # 填入通知相關變數（可選）
 docker compose up -d --build
-curl http://localhost:8000/health
-curl -X POST 'http://localhost:8000/jobs/run?trade_date=2026-09-11&notify=false'
+curl http://localhost:18000/health
+curl -X POST 'http://localhost:18000/jobs/run?trade_date=2026-09-11&notify=false'
 ```
 
 ## VPS 建議步驟
@@ -74,7 +74,7 @@ curl -X POST 'http://localhost:8000/jobs/run?trade_date=2026-09-11&notify=false'
 cd web
 npm install
 npm run dev
-# http://localhost:5173  （/api 代理到 :8000）
+# http://localhost:5173  （/api 代理到 :18000）
 ```
 
 正式（Docker edge profile）會把前端建進 nginx image。
