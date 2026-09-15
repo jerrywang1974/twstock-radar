@@ -86,6 +86,21 @@ twstock-radar analyze --date 2026-09-11
 
 舊的 AiInsight 列若沒有 `buy_ref`／`action_command`，重跑 analyze 會覆蓋更新。
 
+## AI 規則構想（Rule Ideas）
+
+用途：讓 AI 依「當日法人摘要 + 既有規則」提出**更多可量化規則點子**，當你的參考筆記。  
+**不會自動加入掃市引擎**；要上線需另寫程式。
+
+| 指令／API | 說明 |
+|-----------|------|
+| `twstock-radar rule-ideas --date YYYY-MM-DD` | 用 AI 產生構想 |
+| `twstock-radar rule-ideas --date YYYY-MM-DD --no-ai` | 只載入內建範本 |
+| `GET /rules/ideas` | 讀取已存構想 |
+| `POST /rules/ideas/generate` | 產生並覆寫當日構想 |
+| UI「規則」頁 | 可一鍵產生／瀏覽 |
+
+每條構想含：`title`、`logic`、`why`、`data_needed`、`risk_notes`、`priority`、可選 `example_codes`。
+
 ## 設計取捨（Notes）
 
 1. **先規則、後 AI**：AI 不掃全市場原始表，只解讀已命中檔，成本與可控性較好。  

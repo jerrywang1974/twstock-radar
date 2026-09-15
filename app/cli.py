@@ -9,6 +9,7 @@ from app.db import SessionLocal, init_db
 from app.services.ai_analysis import analyze_trade_date, insights_as_dict
 from app.services.backfill import backfill_range
 from app.services.pipeline import run_daily_pipeline
+from app.services.rule_ideas import generate_rule_ideas, ideas_as_dict
 
 
 def _parse_date(value: str | None) -> dt.date | None:
@@ -37,6 +38,17 @@ def main(argv: list[str] | None = None) -> None:
         "--date",
         required=True,
         help="YYYY-MM-DD or YYYYMMDD",
+    )
+
+    ideas_parser = sub.add_parser(
+        "rule-ideas",
+        help="Generate AI rule ideas for reference (does not enable them)",
+    )
+    ideas_parser.add_argument("--date", required=True, help="YYYY-MM-DD or YYYYMMDD")
+    ideas_parser.add_argument(
+        "--no-ai",
+        action="store_true",
+        help="Use built-in fallback ideas only",
     )
 
     backfill_parser = sub.add_parser(
@@ -98,6 +110,29 @@ def main(argv: list[str] | None = None) -> None:
                         "trade_date": day.isoformat(),
                         "count": len(insights),
                         "insights": insights_as_dict(insights),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        finally:
+            db.close()
+        return
+
+    if args.command == "rule-ideas":
+        init_db()
+        day = _parse_date(args.date)
+        assert day is not None
+        db = SessionLocal()
+        try:
+            ideas = generate_rule_ideas(db, day, use_ai=not args.no_ai)
+            print(
+                json.dumps(
+                    {
+                        "trade_date": day.isoformat(),
+                        "count": len(ideas),
+                        "ideas": ideas_as_dict(ideas),
+                        "note": "reference only; not auto-enabled",
                     },
                     ensure_ascii=False,
                     indent=2,

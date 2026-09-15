@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4 — 2026-09-15
+
+### Added
+- AI rule-idea generator for operator reference (`rule-ideas` CLI, `/rules/ideas*`, Rules UI).
+- Built-in fallback rule templates when AI is off/unavailable.
+- Ideas are stored per trade date and never auto-enabled in the scanner.
+
 ## 0.3.3 — 2026-09-15
 
 ### Docs

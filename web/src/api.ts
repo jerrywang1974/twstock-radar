@@ -198,6 +198,47 @@ export const api = {
         model: string
       }>
     }>(`/ai/analyze${tradeDate ? `?trade_date=${tradeDate}` : ''}`, { method: 'POST' }),
+  ruleIdeas: (tradeDate?: string) =>
+    request<{
+      trade_date: string | null
+      count: number
+      ideas: Array<{
+        id: number
+        trade_date: string
+        idea_id: string
+        title: string
+        logic: string
+        why: string
+        data_needed: string
+        risk_notes: string
+        priority: string
+        example_codes: string
+        model: string
+      }>
+      note?: string
+    }>(`/rules/ideas${tradeDate ? `?trade_date=${tradeDate}` : ''}`),
+  generateRuleIdeas: (tradeDate?: string, useAi = true) =>
+    request<{
+      trade_date: string
+      count: number
+      ideas: Array<{
+        id: number
+        trade_date: string
+        idea_id: string
+        title: string
+        logic: string
+        why: string
+        data_needed: string
+        risk_notes: string
+        priority: string
+        example_codes: string
+        model: string
+      }>
+      note?: string
+    }>(
+      `/rules/ideas/generate?use_ai=${useAi}${tradeDate ? `&trade_date=${tradeDate}` : ''}`,
+      { method: 'POST' },
+    ),
 }
 
 export function lots(shares: number): string {
