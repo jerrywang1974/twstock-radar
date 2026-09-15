@@ -41,9 +41,9 @@ ENV PYTHONUNBUFFERED=1 \
 RUN mkdir -p /data
 VOLUME ["/data"]
 
-EXPOSE 8000
+EXPOSE 18000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:8000/health || exit 1
+  CMD curl -fsS http://127.0.0.1:18000/health || exit 1
 
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "18000"]

@@ -36,7 +36,7 @@ twstock-radar backfill --from 2026-09-01 --to 2026-09-11 --ingest-only
 若設定了 `API_TOKEN`，請帶：
 
 ```bash
-curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
+curl -H "Authorization: Bearer <token>" http://localhost:18000/dashboard
 ```
 
 ## 預設規則
@@ -65,7 +65,7 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
    twstock-radar analyze --date 2026-09-11
    # 或
    curl -X POST -H "Authorization: Bearer change-me" \
-     'http://127.0.0.1:8000/ai/analyze?trade_date=2026-09-11'
+     'http://127.0.0.1:18000/ai/analyze?trade_date=2026-09-11'
    ```
 4. UI「AI 觀察」頁可查詢／一鍵執行分析；`GET /ai/insights` 讀取結果
 
@@ -84,9 +84,9 @@ AI 只解讀「已命中規則」的檔（每檔一則，可到 15+）。會輸�
 
 ```bash
 # 查看／更新
-curl -H "Authorization: Bearer change-me" http://127.0.0.1:8000/settings/rules
+curl -H "Authorization: Bearer change-me" http://127.0.0.1:18000/settings/rules
 curl -X PUT -H "Authorization: Bearer change-me" -H "Content-Type: application/json" \
-  http://127.0.0.1:8000/settings/rules \
+  http://127.0.0.1:18000/settings/rules \
   -d '{"rules":[{"rule_id":"trust_streak","enabled":true,"lookback_days":10}]}'
 ```
 

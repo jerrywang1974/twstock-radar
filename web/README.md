@@ -8,7 +8,7 @@ Vite + React 管理後台（繁中）。
 
 ```bash
 cd ..
-DATABASE_URL=sqlite:///./radar.db .venv/bin/uvicorn app.api.main:app --reload --port 8000
+DATABASE_URL=sqlite:///./radar.db .venv/bin/uvicorn app.api.main:app --reload --port 18000
 ```
 
 再啟動前端：
@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-瀏覽器開 `http://localhost:5173`。前端透過 Vite proxy 把 `/api/*` 轉到 `http://127.0.0.1:8000`。
+瀏覽器開 `http://localhost:5173`。前端透過 Vite proxy 把 `/api/*` 轉到 `http://127.0.0.1:18000`。
 
 ## 頁面
 
