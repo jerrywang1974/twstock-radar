@@ -1,7 +1,21 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+const TOKEN_KEY = 'radar_api_token'
+// Matches local .env API_TOKEN default; override via VITE_API_TOKEN if needed.
+const DEFAULT_TOKEN = import.meta.env.VITE_API_TOKEN ?? 'change-me'
+
+export function getApiToken(): string {
+  const saved = localStorage.getItem(TOKEN_KEY)
+  // Empty string means "not configured yet" — use local default.
+  if (saved && saved.trim()) return saved.trim()
+  return DEFAULT_TOKEN
+}
+
+export function setApiToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token.trim())
+}
 
 function authHeaders(): HeadersInit {
-  const token = localStorage.getItem('radar_api_token') || ''
+  const token = getApiToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -16,6 +30,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!response.ok) {
     const text = await response.text()
+    if (response.status === 401) {
+      throw new Error(
+        'Unauthorized：API Token 不正確。請到「設定」頁填入與 .env 的 API_TOKEN 相同的值（本機預設通常是 change-me）。',
+      )
+    }
     throw new Error(text || `HTTP ${response.status}`)
   }
   return response.json() as Promise<T>

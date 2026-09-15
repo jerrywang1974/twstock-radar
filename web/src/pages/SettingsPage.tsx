@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { api, type Settings } from '../api'
+import { api, getApiToken, setApiToken, type Settings } from '../api'
 
 export default function SettingsPage() {
-  const [token, setToken] = useState(localStorage.getItem('radar_api_token') || '')
+  const [token, setToken] = useState(getApiToken())
   const [settings, setSettings] = useState<Settings | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -21,7 +21,7 @@ export default function SettingsPage() {
   }, [])
 
   function saveToken() {
-    localStorage.setItem('radar_api_token', token.trim())
+    setApiToken(token)
     setMessage('API token 已存到瀏覽器 localStorage')
     void load()
   }
@@ -46,7 +46,7 @@ export default function SettingsPage() {
             <input
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="可留空（本機開發預設不強制）"
+              placeholder="需與 .env 的 API_TOKEN 相同（本機預設 change-me）"
               style={{ width: '100%' }}
             />
           </div>
@@ -54,6 +54,9 @@ export default function SettingsPage() {
             儲存
           </button>
         </div>
+        <p className="muted" style={{ marginTop: '0.75rem' }}>
+          若看到 Unauthorized，把這裡改成與伺服器 `.env` 裡 `API_TOKEN` 一致後儲存，再回總覽重新整理。
+        </p>
       </div>
 
       <div className="card">
