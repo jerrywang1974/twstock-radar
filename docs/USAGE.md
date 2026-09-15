@@ -70,11 +70,13 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
 4. UI「AI 觀察」頁可查詢／一鍵執行分析；`GET /ai/insights` 讀取結果
 
 AI 只解讀「已命中規則」的檔（每檔一則，可到 15+）。會輸出：
-- `risk_level` / `avoid_reason`（風險迴避）
-- `growth_score` / `growth_thesis`（成長理由）
-- `upside_pct` / `downside_pct`（上檔／下檔空間%）
+- **操作指令** `action_command`：`BUY` / `WAIT_PULLBACK` / `HOLD` / `REDUCE` / `SELL` / `AVOID` / `BREAKOUT_WATCH`
+- **行動計畫** `action_plan`（2–4 步）
+- **客觀參考價** `buy_ref` / `sell_ref` / `stop_ref`（由近十日高低與均線計算，非模型空想）
+- `risk_level` / `avoid_reason`、`growth_score` / `growth_thesis`
+- `upside_pct` / `downside_pct`
 
-若上檔空間明顯小於下檔風險、或已近區間高點，系統會偏保守（降為 watch／標高風險）。內容僅供觀察，非投資建議。
+若上檔空間明顯小於下檔風險、或已近區間高點，系統會避免直接 `BUY`。內容僅供觀察，非投資建議。
 
 ## 資料語意
 

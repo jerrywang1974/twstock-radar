@@ -154,12 +154,17 @@ export const api = {
         rule_id: string
         rationale: string
         action_bias: string
+        action_command?: string
+        action_plan?: string
         risk_level?: string
         growth_score?: number | null
         upside_pct?: number | null
         downside_pct?: number | null
         avoid_reason?: string
         growth_thesis?: string
+        buy_ref?: number | null
+        sell_ref?: number | null
+        stop_ref?: number | null
         watch_low: number | null
         watch_high: number | null
         last_close: number | null
@@ -176,12 +181,17 @@ export const api = {
         rule_id: string
         rationale: string
         action_bias: string
+        action_command?: string
+        action_plan?: string
         risk_level?: string
         growth_score?: number | null
         upside_pct?: number | null
         downside_pct?: number | null
         avoid_reason?: string
         growth_thesis?: string
+        buy_ref?: number | null
+        sell_ref?: number | null
+        stop_ref?: number | null
         watch_low: number | null
         watch_high: number | null
         last_close: number | null

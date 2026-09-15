@@ -7,12 +7,17 @@ type Insight = {
   rule_id: string
   rationale: string
   action_bias: string
+  action_command?: string
+  action_plan?: string
   risk_level?: string
   growth_score?: number | null
   upside_pct?: number | null
   downside_pct?: number | null
   avoid_reason?: string
   growth_thesis?: string
+  buy_ref?: number | null
+  sell_ref?: number | null
+  stop_ref?: number | null
   watch_low: number | null
   watch_high: number | null
   last_close: number | null
@@ -24,6 +29,13 @@ function riskClass(level?: string): string {
   if (level === 'medium') return 'warn'
   if (level === 'low') return 'ok'
   return ''
+}
+
+function commandClass(cmd?: string): string {
+  if (!cmd) return ''
+  if (cmd === 'BUY' || cmd === 'BREAKOUT_WATCH') return 'ok'
+  if (cmd === 'SELL' || cmd === 'AVOID' || cmd === 'REDUCE') return 'bad'
+  return 'warn'
 }
 
 export default function AiPage() {
@@ -68,7 +80,7 @@ export default function AiPage() {
       setInsights(data.insights)
       setMeta((prev) => ({ ...prev, trade_date: data.trade_date }))
       setMessage(
-        `已完成 AI 分析 ${data.count} 檔（風險優先＋成長空間；交易日 ${data.trade_date}）`,
+        `已完成 AI 操作計畫 ${data.count} 檔（含買賣參考價；交易日 ${data.trade_date}）`,
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -85,10 +97,10 @@ export default function AiPage() {
     <div className="stack">
       <div className="page-head">
         <div>
-          <h1>AI 觀察</h1>
+          <h1>AI 觀察／操作計畫</h1>
           <p>
-            積極評估成長空間，並優先標示應迴避風險（非投資建議）。交易日：
-            {meta.trade_date || '-'}／每次最多 {meta.max_hits} 檔
+            清楚訊號：BUY / WAIT_PULLBACK / HOLD / REDUCE / SELL / AVOID，並附客觀參考價（非投資建議）。
+            交易日：{meta.trade_date || '-'}／每次最多 {meta.max_hits} 檔
           </p>
         </div>
         <div className="toolbar">
@@ -137,11 +149,11 @@ export default function AiPage() {
             <thead>
               <tr>
                 <th>代碼</th>
-                <th>偏向</th>
+                <th>操作指令</th>
+                <th>參考買／賣／停</th>
                 <th>風險</th>
                 <th>成長分</th>
-                <th>上/下空間%</th>
-                <th>收盤／區間</th>
+                <th>行動計畫</th>
                 <th>說明</th>
               </tr>
             </thead>
@@ -150,36 +162,33 @@ export default function AiPage() {
                 <tr key={`${row.code}-${row.rule_id}-${idx}`}>
                   <td className="mono">
                     {row.code} {row.name}
-                    <div className="muted">{row.rule_id}</div>
+                    <div className="muted">收 {row.last_close ?? '-'}</div>
                   </td>
-                  <td>{row.action_bias}</td>
+                  <td>
+                    <span className={`pill ${commandClass(row.action_command)}`}>
+                      {row.action_command || '-'}
+                    </span>
+                  </td>
+                  <td className="mono">
+                    {row.buy_ref ?? '-'} / {row.sell_ref ?? '-'} / {row.stop_ref ?? '-'}
+                  </td>
                   <td>
                     <span className={`pill ${riskClass(row.risk_level)}`}>
                       {row.risk_level || '-'}
                     </span>
                   </td>
                   <td className="mono">{row.growth_score ?? '-'}</td>
-                  <td className="mono">
-                    {row.upside_pct != null && row.downside_pct != null
-                      ? `${row.upside_pct} / ${row.downside_pct}`
-                      : '-'}
+                  <td style={{ whiteSpace: 'pre-wrap', minWidth: 220 }}>
+                    {row.action_plan || '-'}
                   </td>
-                  <td className="mono">
-                    {row.last_close ?? '-'}
-                    <div className="muted">
-                      {row.watch_low != null && row.watch_high != null
-                        ? `${row.watch_low}-${row.watch_high}`
-                        : '-'}
-                    </div>
-                  </td>
-                  <td style={{ whiteSpace: 'normal', minWidth: 320 }}>{row.rationale}</td>
+                  <td style={{ whiteSpace: 'normal', minWidth: 260 }}>{row.rationale}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {!insights.length && !loading && !running && (
-          <div className="empty-box">尚無 AI 觀察資料。可按「執行 AI 分析」產生。</div>
+          <div className="empty-box">尚無資料。按「執行 AI 分析」產生操作指令與參考價。</div>
         )}
       </div>
     </div>
