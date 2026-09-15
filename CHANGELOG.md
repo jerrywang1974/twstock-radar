@@ -2,6 +2,9 @@
 
 ## 0.4.0 — 2026-09-15
 
+### Changed
+- API listen / Docker publish port moved from `8000` to `18000` (avoid host conflicts).
+
 ### Added
 - Rule template catalog with enable/disable + lookback (1–90 days, per-rule bounds).
 - Additional chip-flow templates (foreign top/streak, diverge, dual overlap, turn, cumulative, crowded fade).

@@ -6,7 +6,7 @@ WORKDIR /web
 COPY twstock-radar/web/package.json twstock-radar/web/package-lock.json ./
 RUN npm ci
 COPY twstock-radar/web/ ./
-# Browser calls same-origin /api (nginx proxies to api:8000)
+# Browser calls same-origin /api (nginx proxies to api:18000)
 ENV VITE_API_BASE=/api
 RUN npm run build
 
