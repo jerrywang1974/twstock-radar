@@ -92,6 +92,12 @@ class Alert(Base):
 
 
 class AiInsight(Base):
+    """Persisted AI card for one (trade_date, code, rule_id).
+
+    action_command / buy_ref / sell_ref / stop_ref are the operator-facing
+    signal fields; raw_json keeps the model payload for debugging.
+    """
+
     __tablename__ = "ai_insights"
     __table_args__ = (
         UniqueConstraint("trade_date", "code", "rule_id", name="uq_ai_day_code_rule"),
@@ -103,9 +109,9 @@ class AiInsight(Base):
     name: Mapped[str] = mapped_column(String(64), default="")
     rule_id: Mapped[str] = mapped_column(String(64), default="")
     rationale: Mapped[str] = mapped_column(Text, default="")
-    action_bias: Mapped[str] = mapped_column(String(32), default="watch")
-    action_command: Mapped[str] = mapped_column(String(32), default="HOLD")
-    action_plan: Mapped[str] = mapped_column(Text, default="")
+    action_bias: Mapped[str] = mapped_column(String(32), default="watch")  # legacy tag
+    action_command: Mapped[str] = mapped_column(String(32), default="HOLD")  # BUY/HOLD/...
+    action_plan: Mapped[str] = mapped_column(Text, default="")  # multi-step memo
     risk_level: Mapped[str] = mapped_column(String(16), default="medium")
     growth_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     upside_pct: Mapped[float | None] = mapped_column(Float, nullable=True)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3 — 2026-09-15
+
+### Docs
+- Add `docs/AI_NOTES.md` describing action commands, objective refs, and design constraints.
+- Add module/field comments in `ai_analysis.py`, `price_bands.py`, and `AiInsight`.
+
 ## 0.3.2 — 2026-09-15
 
 ### Added

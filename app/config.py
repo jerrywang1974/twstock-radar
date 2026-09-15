@@ -43,13 +43,13 @@ class Settings(BaseSettings):
     # Backfill pacing (seconds between market-day fetches)
     backfill_sleep_seconds: float = 1.5
 
-    # AI (SpaceXAI / xAI)
+    # AI (SpaceXAI / xAI) — see docs/AI_NOTES.md
     ai_enabled: bool = False
     xai_api_key: Optional[str] = None
     ai_model: str = "grok-4.5"
-    ai_max_hits: int = 15
+    ai_max_hits: int = 15  # max symbols analyzed per run (1 card each)
     ai_base_url: str = "https://api.x.ai/v1"
-    # Prefer names with meaningful upside vs downside when ranking for AI.
+    # When true, rank candidates by upside/downside before calling the model.
     ai_prefer_upside: bool = True
 
 

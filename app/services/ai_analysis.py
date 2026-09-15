@@ -1,3 +1,15 @@
+"""AI observation layer on top of rule hits.
+
+Flow:
+1. Take persisted RuleHit rows (already filtered/cooled by the rule engine).
+2. Build a PriceBand with objective buy/sell/stop refs from recent OHLCV.
+3. Ask xAI for rationale + action_command + action_plan.
+4. Clamp any model-returned prices back into the recent range and apply
+   risk overlays (e.g. no BUY when already at range high).
+
+Outputs are observational signals only — not investment advice.
+"""
+
 from __future__ import annotations
 
 import datetime as dt
@@ -25,6 +37,7 @@ SYSTEM_PROMPT = (
     "回覆必須是單一 JSON 物件，不要 markdown。"
 )
 
+# Stable command vocabulary shown in UI / digests. Keep in sync with docs/AI_NOTES.md.
 VALID_ACTION_COMMANDS = {
     "BUY",
     "WAIT_PULLBACK",
@@ -134,6 +147,7 @@ BUY | WAIT_PULLBACK | HOLD | REDUCE | SELL | AVOID | BREAKOUT_WATCH
 
 
 def _clamp_ref(value: float | None, low: float | None, high: float | None, fallback: float | None):
+    """Keep model-adjusted refs inside the objective band when bounds exist."""
     if value is None:
         return fallback
     if low is not None:
@@ -144,6 +158,7 @@ def _clamp_ref(value: float | None, low: float | None, high: float | None, fallb
 
 
 def _normalize_action_command(raw: str, action_bias: str, risk_level: str) -> str:
+    """Map free-form model text onto the fixed command set + risk gate."""
     cmd = (raw or "").strip().upper().replace(" ", "_")
     aliases = {
         "BUY_BIAS": "BUY",
@@ -165,6 +180,7 @@ def _normalize_action_command(raw: str, action_bias: str, risk_level: str) -> st
             cmd = "REDUCE"
         else:
             cmd = "HOLD"
+    # Never allow an aggressive BUY when the model itself flagged elevated risk.
     if risk_level in {"high", "avoid"} and cmd == "BUY":
         cmd = "WAIT_PULLBACK" if risk_level == "high" else "AVOID"
     return cmd
@@ -187,10 +203,7 @@ def _priority(hit: Hit) -> int:
 def select_hits_for_ai(
     hits: List[Hit], limit: int, prefer_upside: bool = True
 ) -> List[Hit]:
-    """One insight per code; optionally enrich-sort later after bands.
-
-    First pass keeps rule priority; caller may re-rank with bands.
-    """
+    """Dedupe by code (one AI card per symbol) with a wider pool for upside re-rank."""
     ranked = sorted(
         hits,
         key=lambda h: (
@@ -270,6 +283,7 @@ def analyze_hits(
     hits: List[Hit],
     settings: Settings | None = None,
 ) -> List[AiInsight]:
+    """Generate/persist AI insights for the given rule hits."""
     settings = settings or get_settings()
     if not settings.ai_enabled:
         logger.info("AI disabled (AI_ENABLED=false)")
@@ -280,6 +294,7 @@ def analyze_hits(
 
     limit = max(int(settings.ai_max_hits), 0)
     candidates = select_hits_for_ai(hits, limit, prefer_upside=settings.ai_prefer_upside)
+    # Price bands are fetched before the LLM call so prompts include objective refs.
     paired: List[tuple[Hit, PriceBand]] = []
     for hit in candidates:
         paired.append((hit, compute_price_band(hit.code)))

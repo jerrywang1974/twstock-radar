@@ -1,3 +1,10 @@
+"""Objective price context for AI prompts.
+
+Reference prices are derived from recent OHLCV only (not from the LLM).
+The model may fine-tune them later, but ai_analysis clamps results back
+into [watch_low, watch_high].
+"""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -14,10 +21,10 @@ class PriceBand:
     upside_pct: Optional[float]
     downside_pct: Optional[float]
     ma5_bias_pct: Optional[float]
-    range_position: Optional[float]  # 0=at low, 1=at high
-    buy_ref: Optional[float]
-    sell_ref: Optional[float]
-    stop_ref: Optional[float]
+    range_position: Optional[float]  # 0 = at recent low, 1 = at recent high
+    buy_ref: Optional[float]  # pullback / accumulate zone
+    sell_ref: Optional[float]  # reduce / take-profit zone near recent high
+    stop_ref: Optional[float]  # defensive invalidation under recent low
     source: str
 
     def as_prompt_dict(self) -> dict:
@@ -41,17 +48,20 @@ def _objective_refs(
     watch_low: float,
     watch_high: float,
 ) -> tuple[float, float, float]:
-    """Compute objective reference prices from recent range / MA (not LLM guesses)."""
+    """Compute buy/sell/stop refs from recent range and MA5.
+
+    buy_ref  ~ lower of MA5 and midpoint(low, close) — wait-for-pullback zone
+    sell_ref ~ recent high — reduce / resistance reference
+    stop_ref ~ slightly below recent low — invalidation / defense
+    """
     pullback_anchor = ma5 if ma5 is not None else (watch_low + last_close) / 2.0
     buy_ref = _round_price(min(pullback_anchor, (watch_low + last_close) / 2.0))
-    # Keep buy_ref inside [watch_low, last_close] when possible.
     buy_ref = min(max(buy_ref, watch_low), max(last_close, watch_low))
     sell_ref = _round_price(watch_high)
     stop_ref = _round_price(watch_low * 0.985)
     if stop_ref >= buy_ref:
         stop_ref = _round_price(watch_low)
     return buy_ref, sell_ref, stop_ref
-
 
 def compute_price_band(code: str) -> PriceBand:
     """Derive observation band, ratios, and objective buy/sell/stop refs."""
