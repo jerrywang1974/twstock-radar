@@ -81,7 +81,9 @@ export default function RulesPage() {
       <div className="page-head">
         <div>
           <h1>規則</h1>
-          <p>上方是目前啟用規則；下方可用 AI 產生更多構想，僅供你參考筆記，不會自動上線。</p>
+          <p>
+            上方為內建掃市範本（可在設定開關／調 1–90 日 lookback）；下方 AI 構想僅供參考，不會自動上線。
+          </p>
         </div>
       </div>
 
@@ -91,11 +93,20 @@ export default function RulesPage() {
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         {(settings?.rules_catalog || []).map((rule) => (
           <div className="card" key={rule.id}>
-            <h3>{rule.name}</h3>
-            <div className="mono muted" style={{ marginBottom: '0.6rem' }}>
-              {rule.id}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>{rule.name}</h3>
+              <span className={`pill ${rule.enabled ? 'ok' : 'warn'}`}>
+                {rule.enabled ? 'ON' : 'OFF'}
+              </span>
             </div>
-            <p style={{ margin: 0 }}>{rule.description}</p>
+            <div className="mono muted" style={{ margin: '0.4rem 0' }}>
+              {rule.id}／lookback {rule.lookback_days}d／預設{' '}
+              {rule.default_enabled ? 'ON' : 'OFF'}
+            </div>
+            <p style={{ margin: 0 }}>{rule.purpose || rule.description}</p>
+            <p className="muted" style={{ margin: '0.5rem 0 0' }}>
+              {rule.logic}
+            </p>
           </div>
         ))}
       </div>
@@ -104,10 +115,10 @@ export default function RulesPage() {
         <div className="card">
           <h2>門檻參數</h2>
           <div className="stack">
-            <div>投信 Top K：{settings.rules.trust_top_k}</div>
-            <div>投信連買天數：{settings.rules.trust_streak_days}</div>
-            <div>投信最小買超（張）：{settings.rules.trust_min_net_lots}</div>
+            <div>投信／外資 Top K：{settings.rules.trust_top_k}</div>
+            <div>最小買超（張）：{settings.rules.trust_min_net_lots}</div>
             <div>通知冷卻天數：{settings.rules.alert_cooldown_days}</div>
+            <div className="muted">開關與 lookback 請到「設定」頁調整。</div>
           </div>
         </div>
       )}

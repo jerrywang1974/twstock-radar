@@ -83,6 +83,23 @@ export type AlertRow = {
   error: string
 }
 
+export type RuleSetting = {
+  id: string
+  name: string
+  purpose: string
+  logic: string
+  default_enabled: boolean
+  default_lookback_days: number
+  min_lookback_days: number
+  max_lookback_days: number
+  category: string
+  needs_price: boolean
+  notes: string
+  enabled: boolean
+  lookback_days: number
+  description?: string
+}
+
 export type Settings = {
   timezone: string
   ingest_retry_times: string
@@ -108,7 +125,7 @@ export type Settings = {
     email: boolean
     slack: boolean
   }
-  rules_catalog: Array<{ id: string; name: string; description: string }>
+  rules_catalog: RuleSetting[]
 }
 
 export const api = {
@@ -239,6 +256,15 @@ export const api = {
       `/rules/ideas/generate?use_ai=${useAi}${tradeDate ? `&trade_date=${tradeDate}` : ''}`,
       { method: 'POST' },
     ),
+  getRuleSettings: () =>
+    request<{ rules: RuleSetting[]; note?: string }>('/settings/rules'),
+  saveRuleSettings: (
+    rules: Array<{ rule_id: string; enabled: boolean; lookback_days: number }>,
+  ) =>
+    request<{ rules: RuleSetting[]; count: number }>('/settings/rules', {
+      method: 'PUT',
+      body: JSON.stringify({ rules }),
+    }),
 }
 
 export function lots(shares: number): string {

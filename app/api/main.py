@@ -16,6 +16,11 @@ from app.services.ai_analysis import analyze_trade_date, insights_as_dict
 from app.services.backfill import backfill_range
 from app.services.filters import apply_exclude_codes, filter_equities, parse_extra_excludes
 from app.services.pipeline import run_daily_pipeline
+from app.services.rule_config import (
+    catalog_for_api,
+    ensure_rule_configs,
+    update_rule_settings,
+)
 from app.services.rule_ideas import generate_rule_ideas, ideas_as_dict, list_rule_ideas
 
 
@@ -33,6 +38,14 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def _startup() -> None:
         init_db()
+        # Seed rule template configs (enabled/lookback defaults).
+        from app.db import SessionLocal
+
+        db = SessionLocal()
+        try:
+            ensure_rule_configs(db)
+        finally:
+            db.close()
 
     def require_token(authorization: Optional[str] = Header(default=None)) -> None:
         if not settings.api_token:
@@ -82,7 +95,10 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/settings")
-    def get_app_settings(_: None = Depends(require_token)) -> dict:
+    def get_app_settings(
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
         return {
             "timezone": settings.timezone,
             "ingest_retry_times": settings.ingest_retry_times,
@@ -108,24 +124,30 @@ def create_app() -> FastAPI:
                 "email": bool(settings.smtp_host and settings.smtp_to and settings.smtp_from),
                 "slack": bool(settings.slack_webhook_url),
             },
-            "rules_catalog": [
-                {
-                    "id": "trust_top_buy",
-                    "name": "投信買超排行",
-                    "description": f"今日投信買超 ≥ {settings.trust_min_net_lots} 張，取 Top {settings.trust_top_k}",
-                },
-                {
-                    "id": "trust_streak",
-                    "name": "投信連買",
-                    "description": f"投信連續買超 ≥ {settings.trust_streak_days} 日",
-                },
-                {
-                    "id": "foreign_trust_align",
-                    "name": "外資投信同向",
-                    "description": "外資與投信同日買超",
-                },
-            ],
+            "rules_catalog": catalog_for_api(db),
         }
+
+    @app.get("/settings/rules")
+    def get_rule_settings(
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        return {
+            "rules": catalog_for_api(db),
+            "note": "啟用規則才會進入掃市；lookback 支援約 1–90 日（各規則有上下限）。",
+        }
+
+    @app.put("/settings/rules")
+    def put_rule_settings(
+        payload: dict,
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        updates = payload.get("rules") if isinstance(payload, dict) else None
+        if not isinstance(updates, list):
+            raise HTTPException(status_code=400, detail="Body must be {\"rules\": [...]}")
+        rows = update_rule_settings(db, updates)
+        return {"rules": rows, "count": len(rows)}
 
     @app.post("/channels/test")
     def channels_test(

@@ -91,6 +91,20 @@ class Alert(Base):
     )
 
 
+class RuleConfig(Base):
+    """Per-template enable flag and lookback window (1–90+ days)."""
+
+    __tablename__ = "rule_configs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rule_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    enabled: Mapped[int] = mapped_column(Integer, default=1)  # 1/0 for sqlite simplicity
+    lookback_days: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime, default=lambda: dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    )
+
+
 class RuleIdea(Base):
     """AI-suggested screening rule kept as operator reference (not auto-run)."""
 

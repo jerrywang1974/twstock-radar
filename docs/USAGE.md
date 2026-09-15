@@ -78,6 +78,20 @@ AI 只解讀「已命中規則」的檔（每檔一則，可到 15+）。會輸�
 
 若上檔空間明顯小於下檔風險、或已近區間高點，系統會避免直接 `BUY`。內容僅供觀察，非投資建議。更完整的指令定義與價格算法見 [AI_NOTES.md](AI_NOTES.md)。
 
+## 掃市規則範本（可開關）
+
+內建多條籌碼規則範本（不含短線新聞）。可在 UI「設定」啟用／停用，並調整 lookback（約 1–90 日）。
+
+```bash
+# 查看／更新
+curl -H "Authorization: Bearer change-me" http://127.0.0.1:8000/settings/rules
+curl -X PUT -H "Authorization: Bearer change-me" -H "Content-Type: application/json" \
+  http://127.0.0.1:8000/settings/rules \
+  -d '{"rules":[{"rule_id":"trust_streak","enabled":true,"lookback_days":10}]}'
+```
+
+完整清單、用途與預設 ON/OFF 見 [RULES.md](RULES.md)。長天期規則請先 backfill 歷史。
+
 ## AI 規則構想（參考筆記）
 
 ```bash
