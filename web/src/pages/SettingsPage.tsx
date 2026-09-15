@@ -77,6 +77,17 @@ export default function SettingsPage() {
                 <div>回填間隔秒數：{settings.filters.backfill_sleep_seconds}</div>
               </>
             )}
+            {settings.ai && (
+              <>
+                <div>
+                  AI：{settings.ai.enabled ? '開啟' : '關閉'}
+                  {settings.ai.configured ? '（已設定 key）' : '（未設定 key）'}
+                </div>
+                <div>
+                  模型：{settings.ai.model}／每次最多 {settings.ai.max_hits} 檔
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

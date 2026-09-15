@@ -58,11 +58,18 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/dashboard
 1. 在 `.env` 設定：
    - `AI_ENABLED=true`
    - `XAI_API_KEY=...`（[console.x.ai](https://console.x.ai)）
-   - 可選 `AI_MODEL=grok-4.5`、`AI_MAX_HITS=10`
-2. 執行 `twstock-radar run --date YYYY-MM-DD`（或 UI 任務頁）
-3. 到「AI 觀察」頁或 `GET /ai/insights` 查看
+   - 可選 `AI_MODEL=grok-4.5`、`AI_MAX_HITS=5`
+2. 先有規則命中資料（`twstock-radar run --date YYYY-MM-DD --no-notify`）
+3. 單獨跑 AI（不必重抓行情）：
+   ```bash
+   twstock-radar analyze --date 2026-09-11
+   # 或
+   curl -X POST -H "Authorization: Bearer change-me" \
+     'http://127.0.0.1:8000/ai/analyze?trade_date=2026-09-11'
+   ```
+4. UI「AI 觀察」頁可查詢／一鍵執行分析；`GET /ai/insights` 讀取結果
 
-AI 只解讀「已命中規則」的檔；觀察價帶由近十日行情計算，不是模型空想目標價。內容僅供觀察，非投資建議。
+AI 只解讀「已命中規則」的檔（每檔優先保留一則）；觀察價帶由近十日行情計算，不是模型空想目標價。內容僅供觀察，非投資建議。
 
 ## 資料語意
 

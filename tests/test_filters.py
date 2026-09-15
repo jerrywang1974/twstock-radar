@@ -2,10 +2,10 @@ import datetime as dt
 import unittest
 
 from app.config import Settings
-from app.db import Base, SessionLocal, engine
 from app.models import InstitutionalDaily, RuleHit
 from app.rules.engine import scan_trust_rules
 from app.services.filters import is_tradable_equity
+from tests.db_utils import make_test_session
 
 
 class FilterTest(unittest.TestCase):
@@ -22,9 +22,7 @@ class FilterTest(unittest.TestCase):
 
 class CooldownTest(unittest.TestCase):
     def setUp(self):
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        self.db = SessionLocal()
+        self.engine, self.db = make_test_session()
         self.day = dt.date(2026, 9, 11)
         for offset, net in [(2, 500000), (1, 400000), (0, 300000)]:
             self.db.add(
@@ -38,7 +36,6 @@ class CooldownTest(unittest.TestCase):
                     total_net=net + 100000,
                 )
             )
-        # ETF should be filtered out of scan
         self.db.add(
             InstitutionalDaily(
                 trade_date=self.day,
@@ -54,7 +51,7 @@ class CooldownTest(unittest.TestCase):
 
     def tearDown(self):
         self.db.close()
-        Base.metadata.drop_all(bind=engine)
+        self.engine.dispose()
 
     def test_scan_excludes_etf(self):
         settings = Settings(

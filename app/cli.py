@@ -3,9 +3,21 @@ from __future__ import annotations
 import argparse
 import json
 
+import datetime as dt
+
 from app.db import SessionLocal, init_db
+from app.services.ai_analysis import analyze_trade_date, insights_as_dict
 from app.services.backfill import backfill_range
 from app.services.pipeline import run_daily_pipeline
+
+
+def _parse_date(value: str | None) -> dt.date | None:
+    if not value:
+        return None
+    text = value.strip()
+    if "-" in text:
+        return dt.datetime.strptime(text[:10], "%Y-%m-%d").date()
+    return dt.datetime.strptime(text, "%Y%m%d").date()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -16,6 +28,15 @@ def main(argv: list[str] | None = None) -> None:
     run_parser.add_argument("--date", help="YYYY-MM-DD or YYYYMMDD (default: today)")
     run_parser.add_argument(
         "--no-notify", action="store_true", help="Skip notification channels"
+    )
+
+    analyze_parser = sub.add_parser(
+        "analyze", help="Run AI analysis on existing rule hits for a trade date"
+    )
+    analyze_parser.add_argument(
+        "--date",
+        required=True,
+        help="YYYY-MM-DD or YYYYMMDD",
     )
 
     backfill_parser = sub.add_parser(
@@ -60,6 +81,28 @@ def main(argv: list[str] | None = None) -> None:
                 db, trade_date=args.date, notify=not args.no_notify
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
+        finally:
+            db.close()
+        return
+
+    if args.command == "analyze":
+        init_db()
+        day = _parse_date(args.date)
+        assert day is not None
+        db = SessionLocal()
+        try:
+            insights = analyze_trade_date(db, day)
+            print(
+                json.dumps(
+                    {
+                        "trade_date": day.isoformat(),
+                        "count": len(insights),
+                        "insights": insights_as_dict(insights),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         finally:
             db.close()
         return
