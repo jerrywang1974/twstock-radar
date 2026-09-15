@@ -78,6 +78,12 @@ export type Settings = {
     exclude_codes: string
     backfill_sleep_seconds: number
   }
+  ai?: {
+    enabled: boolean
+    configured: boolean
+    model: string
+    max_hits: number
+  }
   channels: {
     telegram: boolean
     email: boolean
@@ -134,6 +140,22 @@ export const api = {
         model: string
       }>
     }>(`/ai/insights${tradeDate ? `?trade_date=${tradeDate}` : ''}`),
+  aiAnalyze: (tradeDate?: string) =>
+    request<{
+      trade_date: string
+      count: number
+      insights: Array<{
+        code: string
+        name: string
+        rule_id: string
+        rationale: string
+        action_bias: string
+        watch_low: number | null
+        watch_high: number | null
+        last_close: number | null
+        model: string
+      }>
+    }>(`/ai/analyze${tradeDate ? `?trade_date=${tradeDate}` : ''}`, { method: 'POST' }),
 }
 
 export function lots(shares: number): string {

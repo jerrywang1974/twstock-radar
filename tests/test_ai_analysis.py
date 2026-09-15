@@ -4,22 +4,20 @@ import unittest
 from unittest import mock
 
 from app.config import Settings
-from app.db import Base, SessionLocal, engine
 from app.rules.engine import Hit
 from app.services.ai_analysis import analyze_hits
 from app.services.price_bands import PriceBand
+from tests.db_utils import make_test_session
 
 
 class AiAnalysisTest(unittest.TestCase):
     def setUp(self):
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        self.db = SessionLocal()
+        self.engine, self.db = make_test_session()
         self.day = dt.date(2026, 9, 11)
 
     def tearDown(self):
         self.db.close()
-        Base.metadata.drop_all(bind=engine)
+        self.engine.dispose()
 
     def test_disabled_returns_empty(self):
         settings = Settings(ai_enabled=False, xai_api_key="x")

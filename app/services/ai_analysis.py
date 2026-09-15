@@ -2,21 +2,32 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import re
-from typing import List, Optional
+from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.models import AiInsight
+from app.models import AiInsight, RuleHit
 from app.rules.engine import Hit
 from app.services.price_bands import PriceBand, compute_price_band
-from twstock.institutional import to_lots
+
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = (
+    "你是台股籌碼觀察助手。只根據提供的數字撰寫繁中說明。"
+    "不可捏造未提供的財報、消息或價格。"
+    "回覆必須是單一 JSON 物件，不要 markdown。"
+)
 
 
 def _extract_json(text: str) -> dict:
     text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -33,30 +44,31 @@ def _call_xai(prompt: str, settings: Settings) -> str:
     from openai import OpenAI
 
     client = OpenAI(api_key=settings.xai_api_key, base_url=settings.ai_base_url)
-    # Prefer Responses API; fall back to chat.completions for older SDKs.
+
+    # Prefer Responses API.
     try:
-        response = client.responses.create(model=settings.ai_model, input=prompt)
+        response = client.responses.create(
+            model=settings.ai_model,
+            instructions=SYSTEM_PROMPT,
+            input=prompt,
+        )
         text = getattr(response, "output_text", None)
-        if text:
+        if text and text.strip():
             return text
-    except Exception:
-        pass
+        raise RuntimeError(f"Empty responses output: {response!r}")
+    except Exception as exc:
+        logger.warning("responses API failed, falling back to chat.completions: %s", exc)
 
     completion = client.chat.completions.create(
         model=settings.ai_model,
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "你是台股籌碼觀察助手。只根據提供的數字撰寫繁中說明。"
-                    "不可捏造未提供的財報或消息。回覆必須是 JSON。"
-                ),
-            },
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
         temperature=0.2,
     )
-    return completion.choices[0].message.content or "{}"
+    content = completion.choices[0].message.content or "{}"
+    return content
 
 
 def _build_prompt(hit: Hit, band: PriceBand) -> str:
@@ -83,6 +95,56 @@ def _build_prompt(hit: Hit, band: PriceBand) -> str:
 """.strip()
 
 
+def _priority(hit: Hit) -> int:
+    order = {"trust_streak": 0, "trust_top_buy": 1, "foreign_trust_align": 2}
+    return order.get(hit.rule_id, 9)
+
+
+def select_hits_for_ai(hits: List[Hit], limit: int) -> List[Hit]:
+    """Prefer one insight per code, ranked by rule priority then metrics."""
+    ranked = sorted(
+        hits,
+        key=lambda h: (
+            _priority(h),
+            -(h.metrics or {}).get("trust_net_lots", 0)
+            if isinstance((h.metrics or {}).get("trust_net_lots", 0), (int, float))
+            else 0,
+            h.code,
+        ),
+    )
+    chosen: List[Hit] = []
+    seen: set[str] = set()
+    for hit in ranked:
+        if hit.code in seen:
+            continue
+        seen.add(hit.code)
+        chosen.append(hit)
+        if len(chosen) >= limit:
+            break
+    return chosen
+
+
+def hits_from_rule_rows(rows: List[RuleHit]) -> List[Hit]:
+    out: List[Hit] = []
+    for row in rows:
+        try:
+            metrics = json.loads(row.metrics_json or "{}")
+        except json.JSONDecodeError:
+            metrics = {}
+        out.append(
+            Hit(
+                trade_date=row.trade_date,
+                code=row.code,
+                name=row.name,
+                rule_id=row.rule_id,
+                reason=row.reason,
+                suggested_action=row.suggested_action,
+                metrics=metrics,
+            )
+        )
+    return out
+
+
 def analyze_hits(
     db: Session,
     hits: List[Hit],
@@ -90,11 +152,13 @@ def analyze_hits(
 ) -> List[AiInsight]:
     settings = settings or get_settings()
     if not settings.ai_enabled:
+        logger.info("AI disabled (AI_ENABLED=false)")
         return []
     if not settings.xai_api_key:
+        logger.warning("AI enabled but XAI_API_KEY missing")
         return []
 
-    selected = hits[: max(int(settings.ai_max_hits), 0)]
+    selected = select_hits_for_ai(hits, max(int(settings.ai_max_hits), 0))
     saved: List[AiInsight] = []
 
     for hit in selected:
@@ -109,9 +173,8 @@ def analyze_hits(
                 rationale = f"{rationale}\n風險：{risks}".strip()
             status_raw = raw_text
         except Exception as exc:  # noqa: BLE001
-            rationale = (
-                f"AI 解讀失敗，改以規則摘要：{hit.reason}（{exc}）"
-            )
+            logger.exception("AI analyze failed for %s", hit.code)
+            rationale = f"AI 解讀失敗，改以規則摘要：{hit.reason}（{exc}）"
             action_bias = hit.suggested_action
             status_raw = json.dumps({"error": str(exc)}, ensure_ascii=False)
 
@@ -151,6 +214,22 @@ def analyze_hits(
     for entity in saved:
         db.refresh(entity)
     return saved
+
+
+def analyze_trade_date(
+    db: Session,
+    trade_date: dt.date,
+    settings: Settings | None = None,
+) -> List[AiInsight]:
+    """Run AI on persisted rule hits for a trade date (no re-ingest)."""
+    rows = list(
+        db.scalars(
+            select(RuleHit)
+            .where(RuleHit.trade_date == trade_date)
+            .order_by(desc(RuleHit.id))
+        )
+    )
+    return analyze_hits(db, hits_from_rule_rows(rows), settings=settings)
 
 
 def format_ai_section(insights: List[AiInsight]) -> str:

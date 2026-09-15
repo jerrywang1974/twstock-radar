@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.db import get_db, init_db
 from app.models import AiInsight, Alert, IngestJob, InstitutionalDaily, RuleHit
 from app.notify.dispatcher import send_digest
+from app.services.ai_analysis import analyze_trade_date, insights_as_dict
 from app.services.backfill import backfill_range
 from app.services.filters import apply_exclude_codes, filter_equities, parse_extra_excludes
 from app.services.pipeline import run_daily_pipeline
@@ -342,6 +343,29 @@ def create_app() -> FastAPI:
                 }
                 for r in rows
             ],
+        }
+
+    @app.post("/ai/analyze")
+    def ai_analyze(
+        trade_date: Optional[str] = Query(default=None),
+        db: Session = Depends(get_db),
+        _: None = Depends(require_token),
+    ) -> dict:
+        """Run AI on existing rule hits for a date (does not re-ingest)."""
+        if not settings.ai_enabled:
+            raise HTTPException(status_code=400, detail="AI_ENABLED is false")
+        if not settings.xai_api_key:
+            raise HTTPException(status_code=400, detail="XAI_API_KEY is not configured")
+        day = (
+            dt.datetime.strptime(trade_date, "%Y-%m-%d").date()
+            if trade_date
+            else dt.date.today()
+        )
+        insights = analyze_trade_date(db, day, settings=settings)
+        return {
+            "trade_date": day.isoformat(),
+            "count": len(insights),
+            "insights": insights_as_dict(insights),
         }
 
     return app
