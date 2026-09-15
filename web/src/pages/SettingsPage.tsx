@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
-import { api, getApiToken, setApiToken, type Settings } from '../api'
+import { api, getApiToken, setApiToken, type RuleSetting, type Settings } from '../api'
 
 export default function SettingsPage() {
   const [token, setToken] = useState(getApiToken())
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [rules, setRules] = useState<RuleSetting[]>([])
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   async function load() {
     setError('')
     try {
-      setSettings(await api.settings())
+      const [s, r] = await Promise.all([api.settings(), api.getRuleSettings()])
+      setSettings(s)
+      setRules(r.rules)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -26,12 +30,36 @@ export default function SettingsPage() {
     void load()
   }
 
+  function patchRule(id: string, patch: Partial<RuleSetting>) {
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  }
+
+  async function saveRules() {
+    setSaving(true)
+    setError('')
+    setMessage('')
+    try {
+      const payload = rules.map((r) => ({
+        rule_id: r.id,
+        enabled: r.enabled,
+        lookback_days: r.lookback_days,
+      }))
+      const data = await api.saveRuleSettings(payload)
+      setRules(data.rules)
+      setMessage(`已儲存 ${data.count} 條掃市規則設定`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="stack">
       <div className="page-head">
         <div>
           <h1>設定</h1>
-          <p>瀏覽器 API token、時區與排程資訊</p>
+          <p>API token、掃市規則開關與觀察天數（1–90+，各規則有上下限）</p>
         </div>
       </div>
 
@@ -54,9 +82,74 @@ export default function SettingsPage() {
             儲存
           </button>
         </div>
-        <p className="muted" style={{ marginTop: '0.75rem' }}>
-          若看到 Unauthorized，把這裡改成與伺服器 `.env` 裡 `API_TOKEN` 一致後儲存，再回總覽重新整理。
-        </p>
+      </div>
+
+      <div className="card">
+        <div className="page-head" style={{ marginBottom: '0.75rem' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>掃市規則範本</h2>
+            <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+              啟用後才會進入掃市。不含短線新聞衝擊規則；詳見 docs/RULES.md。
+            </p>
+          </div>
+          <button className="btn accent" onClick={() => void saveRules()} disabled={saving}>
+            {saving ? '儲存中…' : '儲存規則設定'}
+          </button>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>啟用</th>
+                <th>規則</th>
+                <th>預設</th>
+                <th>觀察天數</th>
+                <th>用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((rule) => (
+                <tr key={rule.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={rule.enabled}
+                      onChange={(e) => patchRule(rule.id, { enabled: e.target.checked })}
+                    />
+                  </td>
+                  <td>
+                    <div>{rule.name}</div>
+                    <div className="mono muted">{rule.id}</div>
+                  </td>
+                  <td>{rule.default_enabled ? 'ON' : 'OFF'}</td>
+                  <td>
+                    <input
+                      type="number"
+                      min={rule.min_lookback_days}
+                      max={rule.max_lookback_days}
+                      value={rule.lookback_days}
+                      disabled={rule.min_lookback_days === rule.max_lookback_days}
+                      onChange={(e) =>
+                        patchRule(rule.id, {
+                          lookback_days: Number(e.target.value),
+                        })
+                      }
+                      style={{ width: 88 }}
+                    />
+                    <div className="muted">
+                      {rule.min_lookback_days}–{rule.max_lookback_days}
+                    </div>
+                  </td>
+                  <td style={{ whiteSpace: 'normal', minWidth: 240 }}>
+                    {rule.purpose}
+                    {rule.notes ? <div className="muted">{rule.notes}</div> : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="card">
@@ -71,25 +164,10 @@ export default function SettingsPage() {
               {settings.channels.email ? '✓' : '✗'} / Slack{' '}
               {settings.channels.slack ? '✓' : '✗'}
             </div>
-            {settings.filters && (
-              <>
-                <div>
-                  排除非股票：{settings.filters.exclude_non_equity ? '是' : '否'}
-                </div>
-                <div>額外排除代碼：{settings.filters.exclude_codes || '(無)'}</div>
-                <div>回填間隔秒數：{settings.filters.backfill_sleep_seconds}</div>
-              </>
-            )}
             {settings.ai && (
-              <>
-                <div>
-                  AI：{settings.ai.enabled ? '開啟' : '關閉'}
-                  {settings.ai.configured ? '（已設定 key）' : '（未設定 key）'}
-                </div>
-                <div>
-                  模型：{settings.ai.model}／每次最多 {settings.ai.max_hits} 檔
-                </div>
-              </>
+              <div>
+                AI：{settings.ai.enabled ? '開啟' : '關閉'}／模型 {settings.ai.model}
+              </div>
             )}
           </div>
         )}

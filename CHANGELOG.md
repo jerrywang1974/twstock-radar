@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-09-15
+
+### Added
+- Rule template catalog with enable/disable + lookback (1–90 days, per-rule bounds).
+- Additional chip-flow templates (foreign top/streak, diverge, dual overlap, turn, cumulative, crowded fade).
+- Settings UI/API to toggle rules; `docs/RULES.md` documents purpose and default on/off.
+- No short-term news-impact rules in the default template set.
+
 ## 0.3.4 — 2026-09-15
 
 ### Added

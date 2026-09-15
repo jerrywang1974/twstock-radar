@@ -3,6 +3,7 @@ from app.models.entities import (
     Alert,
     IngestJob,
     InstitutionalDaily,
+    RuleConfig,
     RuleHit,
     RuleIdea,
 )
@@ -14,4 +15,5 @@ __all__ = [
     "Alert",
     "AiInsight",
     "RuleIdea",
+    "RuleConfig",
 ]
