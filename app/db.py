@@ -42,6 +42,11 @@ def _ensure_sqlite_columns() -> None:
             ("downside_pct", "FLOAT"),
             ("avoid_reason", "TEXT DEFAULT ''"),
             ("growth_thesis", "TEXT DEFAULT ''"),
+            ("action_command", "VARCHAR(32) DEFAULT 'HOLD'"),
+            ("action_plan", "TEXT DEFAULT ''"),
+            ("buy_ref", "FLOAT"),
+            ("sell_ref", "FLOAT"),
+            ("stop_ref", "FLOAT"),
         ]
     }
     with engine.begin() as conn:

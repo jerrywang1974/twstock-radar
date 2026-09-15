@@ -15,6 +15,9 @@ class PriceBand:
     downside_pct: Optional[float]
     ma5_bias_pct: Optional[float]
     range_position: Optional[float]  # 0=at low, 1=at high
+    buy_ref: Optional[float]
+    sell_ref: Optional[float]
+    stop_ref: Optional[float]
     source: str
 
     def as_prompt_dict(self) -> dict:
@@ -27,10 +30,45 @@ def _pct(numer: float, denom: float) -> Optional[float]:
     return round((numer / denom) * 100.0, 2)
 
 
+def _round_price(value: float) -> float:
+    # Taiwan stocks: keep 2 decimals for most names.
+    return round(value, 2)
+
+
+def _objective_refs(
+    last_close: float,
+    ma5: Optional[float],
+    watch_low: float,
+    watch_high: float,
+) -> tuple[float, float, float]:
+    """Compute objective reference prices from recent range / MA (not LLM guesses)."""
+    pullback_anchor = ma5 if ma5 is not None else (watch_low + last_close) / 2.0
+    buy_ref = _round_price(min(pullback_anchor, (watch_low + last_close) / 2.0))
+    # Keep buy_ref inside [watch_low, last_close] when possible.
+    buy_ref = min(max(buy_ref, watch_low), max(last_close, watch_low))
+    sell_ref = _round_price(watch_high)
+    stop_ref = _round_price(watch_low * 0.985)
+    if stop_ref >= buy_ref:
+        stop_ref = _round_price(watch_low)
+    return buy_ref, sell_ref, stop_ref
+
+
 def compute_price_band(code: str) -> PriceBand:
-    """Derive observation band + upside/downside ratios from recent OHLCV."""
+    """Derive observation band, ratios, and objective buy/sell/stop refs."""
     empty = PriceBand(
-        None, None, None, None, None, None, None, None, None, "empty"
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "empty",
     )
     try:
         from twstock import Stock
@@ -58,6 +96,9 @@ def compute_price_band(code: str) -> PriceBand:
         range_position = (
             round((last_close - watch_low) / span, 3) if span > 0 else None
         )
+        buy_ref, sell_ref, stop_ref = _objective_refs(
+            last_close, ma5, watch_low, watch_high
+        )
 
         return PriceBand(
             last_close=last_close,
@@ -69,9 +110,24 @@ def compute_price_band(code: str) -> PriceBand:
             downside_pct=downside_pct,
             ma5_bias_pct=ma5_bias_pct,
             range_position=range_position,
+            buy_ref=buy_ref,
+            sell_ref=sell_ref,
+            stop_ref=stop_ref,
             source="twstock.Stock",
         )
     except Exception as exc:  # noqa: BLE001
         return PriceBand(
-            None, None, None, None, None, None, None, None, None, f"error:{exc}"
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            f"error:{exc}",
         )

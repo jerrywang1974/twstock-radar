@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 — 2026-09-15
+
+### Added
+- Clear AI action commands: `BUY`, `WAIT_PULLBACK`, `HOLD`, `REDUCE`, `SELL`, `AVOID`, `BREAKOUT_WATCH`.
+- `action_plan` checklist plus objective `buy_ref` / `sell_ref` / `stop_ref` from recent OHLCV.
+- Admin AI page highlights command and reference prices.
+
 ## 0.3.1 — 2026-09-15
 
 ### Changed
